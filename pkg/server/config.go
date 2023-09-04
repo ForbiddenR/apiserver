@@ -44,11 +44,17 @@ type CompletedConfig struct {
 	*completedConfig
 }
 
-func (c completedConfig) New() (*GenericAPIServer, error) {
+// New creates a new server which logically combines the handling chain with the passed server.
+// name is used to differentiate for logging.
+func (c completedConfig) New(name string) (*GenericAPIServer, error) {
 	apiServerHandler := NewAPIServerHandler()
 
 	s := &GenericAPIServer{
 		Handler: apiServerHandler,
+
+		healthzChecks: c.HealthzChecks,
+		livezChecks:   c.LivezChecks,
+		readyzChecks:  c.ReadyzChecks,
 	}
 
 	installAPI(s, c.Config)
