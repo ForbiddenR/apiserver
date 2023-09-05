@@ -44,8 +44,16 @@ type preparedGenericAPIServer struct {
 }
 
 func (s *GenericAPIServer) PrepareRun() preparedGenericAPIServer {
+
+	s.installHealthz()
 	
 	return preparedGenericAPIServer{s}
+}
+
+func (s preparedGenericAPIServer) Run(stopCh <-chan struct{}) error {
+	
+	<-stopCh
+	return nil
 }
 
 func NewDefaultAPIGroupInfo(group string) APIGroupInfo {

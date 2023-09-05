@@ -14,6 +14,12 @@ type Config struct {
 	MinRequestTimeout int
 }
 
+// Complete fills in any fields not set that are required to have valid data and can be drived
+// from othe fields. If you're going to `ApplyOptions`, do that first. It's mutating the receiver.
+func (c *Config) Complete() CompletedConfig {
+	return CompletedConfig{&completedConfig{c}}
+}
+
 type RecommendedConfig struct {
 	Config
 }
@@ -34,6 +40,12 @@ func NewRecommendedConfig() *RecommendedConfig {
 	return &RecommendedConfig{
 		Config: *NewConfig(),
 	}
+}
+
+// Complete fills in any fields not set that are required to have valid data and can be drived
+// from othe fields. If you're going to `ApplyOptions`, do that first. It's mutating the receiver.
+func (c *RecommendedConfig) Complete() CompletedConfig {
+	return c.Config.Complete()
 }
 
 type completedConfig struct {
