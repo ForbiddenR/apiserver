@@ -1,8 +1,14 @@
 package server
 
-import "github.com/ForbiddenR/apiserver/pkg/server/healthz"
+import (
+	"net"
+
+	"github.com/ForbiddenR/apiserver/pkg/server/healthz"
+)
 
 type Config struct {
+	// Serving is required to serve http
+	Serving *ServingInfo
 	// The default set of healthz checks. There might be more added via AddHealthChecks dynamically.
 	HealthzChecks []healthz.HealthzChecker
 	// The default set of livez checks. There might be more added via AddHealthChecks dynamically.
@@ -22,6 +28,11 @@ func (c *Config) Complete() CompletedConfig {
 
 type RecommendedConfig struct {
 	Config
+}
+
+type ServingInfo struct {
+	// Listener is the secure server network listener.
+	Listener net.Listener
 }
 
 // NewConfig returns a Config struct with default values.

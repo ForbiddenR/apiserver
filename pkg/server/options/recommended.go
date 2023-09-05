@@ -6,17 +6,23 @@ import "github.com/ForbiddenR/apiserver/pkg/server"
 // If you add something to this list, it should be in a logical grouping.
 // Each of them can be nil to leave the feature unconfigured on ApplyTo.
 type RecommendedOptions struct {
+	Serving *ServingOptions
 	CoreAPI *CoreAPIOptions
 }
 
 func NewRecommendedOptions() *RecommendedOptions {
+
 	return &RecommendedOptions{
 		CoreAPI: NewCoreAPIOptions(),
+		Serving: NewServingOptions(),
 	}
 }
 
 func (o *RecommendedOptions) ApplyTo(config *server.RecommendedConfig) error {
 	if err := o.CoreAPI.ApplyTo(config); err != nil {
+		return err
+	}
+	if err := o.Serving.ApplyTo(&config.Config.Serving); err != nil {
 		return err
 	}
 	return nil
