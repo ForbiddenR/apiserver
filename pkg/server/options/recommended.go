@@ -18,6 +18,8 @@ func NewRecommendedOptions() *RecommendedOptions {
 	}
 }
 
+// ApplyTo adds RecommendedOptions to the server configuration.
+// pluginInitializers can be empty, it os only need for additional initializers.
 func (o *RecommendedOptions) ApplyTo(config *server.RecommendedConfig) error {
 	if err := o.CoreAPI.ApplyTo(config); err != nil {
 		return err
