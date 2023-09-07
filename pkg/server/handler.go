@@ -5,15 +5,15 @@ import (
 )
 
 type APIServerHandler struct {
-	GoRestfulApp *fiber.App
-	// NonGoRestfulMux *mux.Router
+	GoRestfulApp    *fiber.App
+	NonGoRestfulMux fiber.Router
 }
 
 func NewAPIServerHandler() *APIServerHandler {
 	gorestfulApp := fiber.New()
-	
+
 	return &APIServerHandler{
-		GoRestfulApp: gorestfulApp,
-		// NonGoRestfulMux: mux.NewRouter(),
+		GoRestfulApp:    gorestfulApp,
+		NonGoRestfulMux: gorestfulApp.Group("/actuator/health"),
 	}
 }

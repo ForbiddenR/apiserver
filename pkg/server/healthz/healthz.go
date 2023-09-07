@@ -1,8 +1,6 @@
 package healthz
 
 import (
-	"bytes"
-	"fmt"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
@@ -46,6 +44,22 @@ func InstallHandler(mux mux, checks ...HealthzChecker) {
 	InstallPathHandler(mux, "/healthz", checks...)
 }
 
+// InstallReadyzHandler registers handlers for health checking on the path
+// "/readiness" to mux. *All handlers* for the path must be specified in
+// exactly one call to InstallReadyzHandler. Calling InstallReadyzHandler more
+// than once for the same path and mux will result in a panic.
+func InstallReadyzHandler(mux mux, checks ...HealthzChecker) {
+	InstallPathHandler(mux, "/readiness", checks...)
+}
+
+// InstallLivezHandler registers handlers for health checking on the path
+// "/liveness" to mux. *All handlers* for the path must be specified in
+// exactly one call to InstallLivezHandler. Calling InstallLivezHandler more
+// than once for the same path and mux will result in a panic.
+func InstallLivezHandler(mux mux, checks ...HealthzChecker) {
+	InstallPathHandler(mux, "/liveness", checks...)
+}
+
 // InstallPathHandler registers handlers for health checking on
 // a specific path to mux. *All handlers* for the path must be
 // specified in exactly one call to InstallPathHandler. Calling
@@ -66,33 +80,82 @@ type mux interface {
 }
 
 func handleRootHealth(name string, checks ...HealthzChecker) fiber.Handler {
-
 	return func(ctx *fiber.Ctx) error {
-		var individualCheckOutput bytes.Buffer
+		// var individualCheckOutput bytes.Buffer
 		for _, check := range checks {
 			if err := check.Check(ctx.Request()); err != nil {
-				fmt.Fprintf(&individualCheckOutput, "[-]%s failed: reason withheld\n", check.Name())
-			} else {
-				fmt.Fprintf(&individualCheckOutput, "[+]%s ok\n", check.Name())
+				return ctx.Status(fasthttp.StatusNotFound).JSON(GetHealthzResponse(check.Name(), 1))
 			}
 		}
-		ctx.Response().Header.Set("Content-Type", "text/plain; charset=utf-8")
-		ctx.Response().Header.Set("X-Content-Type-Options", "nosniff")
-		return ctx.SendString(individualCheckOutput.String())
+		return ctx.Status(fasthttp.StatusNotFound).JSON(GetHealthzResponse(name, 0))
 	}
-	// return func(w http.ResponseWriter, r *http.Request) {
-	// 	var individualCheckOutput bytes.Buffer
-	// 	for _, check := range checks {
-	// 		if err := check.Check(r); err != nil {
-	// 			fmt.Fprintf(&individualCheckOutput, "[-]%s failed: reason withheld\n", check.Name())
-	// 		} else {
-	// 			fmt.Fprintf(&individualCheckOutput, "[+]%s ok\n", check.Name())
-	// 		}
-	// 	}
+}
 
-	// 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	// 	w.Header().Set("X-Content-Type-Options", "nosniff")
-	// 	individualCheckOutput.WriteTo(w)
-	// 	fmt.Fprintf(w, "%s check passed\n", name)
-	// }
+func GetHealthzResponse(name string, code int) *HealthzResponse {
+	switch name {
+	case "liveness":
+		return NewHealthzResponse((&LivenessComponent{}).SetStatus(code))
+	case "readiness":
+		return NewHealthzResponse((&ReadinessComponent{}).SetStatus(code))
+	}
+	return nil
+}
+
+type HealthzResponse struct {
+	Status     string     `json:"status"`
+	Components Components `json:"components"`
+}
+
+func NewHealthzResponse(components Components) *HealthzResponse {
+	return &HealthzResponse{
+		Status:     components.GetStatus(),
+		Components: components,
+	}
+}
+
+type Components interface {
+	SetStatus(code int) Components
+	GetStatus() string
+}
+
+var _ Components = &LivenessComponent{}
+
+type LivenessComponent struct {
+	LivenessState Status `json:"livenessstate"`
+}
+
+func (l *LivenessComponent) SetStatus(code int) Components {
+	if code == 0 {
+		l.LivenessState.Status = "UP"
+	} else {
+		l.LivenessState.Status = "DOWN"
+	}
+	return l
+}
+
+func (l *LivenessComponent) GetStatus() string {
+	return l.LivenessState.Status
+}
+
+var _ Components = &ReadinessComponent{}
+
+type ReadinessComponent struct {
+	ReadinessState Status `json:"readinessstate"`
+}
+
+func (r *ReadinessComponent) SetStatus(code int) Components {
+	if code == 0 {
+		r.ReadinessState.Status = "UP"
+	} else {
+		r.ReadinessState.Status = "OUT_OF_SERVICE"
+	}
+	return r
+}
+
+func (r *ReadinessComponent) GetStatus() string {
+	return r.ReadinessState.Status
+}
+
+type Status struct {
+	Status string `json:"status"`
 }
