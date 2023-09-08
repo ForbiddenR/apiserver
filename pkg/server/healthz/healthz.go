@@ -87,7 +87,7 @@ func handleRootHealth(name string, checks ...HealthzChecker) fiber.Handler {
 				return ctx.Status(fasthttp.StatusNotFound).JSON(GetHealthzResponse(check.Name(), 1))
 			}
 		}
-		return ctx.Status(fasthttp.StatusNotFound).JSON(GetHealthzResponse(name, 0))
+		return ctx.Status(fasthttp.StatusOK).JSON(GetHealthzResponse(name, 0))
 	}
 }
 
