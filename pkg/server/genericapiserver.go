@@ -58,7 +58,7 @@ type preparedGenericAPIServer struct {
 
 func (s *GenericAPIServer) PrepareRun() preparedGenericAPIServer {
 
-	s.installHealthz()
+	// s.installHealthz()
 	s.installLivez()
 
 	s.installReadyz()
