@@ -47,8 +47,8 @@ func NewConfig() *Config {
 		HealthzChecks:     append([]healthz.HealthzChecker{}, defaultHeathChecks...),
 		LivezChecks:       append([]healthz.HealthzChecker{}, defaultHeathChecks...),
 		ReadyzChecks:      append([]healthz.HealthzChecker{}, defaultHeathChecks...),
-		RequestTimeout:    time.Duration(60) * time.Second,
-		MinRequestTimeout: 1800,
+		RequestTimeout:    time.Duration(5) * time.Second,
+		MinRequestTimeout: 180,
 	}
 }
 
