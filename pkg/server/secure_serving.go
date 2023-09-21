@@ -52,8 +52,7 @@ func RunServer(
 	go func() {
 		defer close(listenerStoppedCh)
 
-		var listener net.Listener
-		listener = tcpKeepAliveListener{ln}
+		listener := tcpKeepAliveListener{ln}
 
 		err := server.Listener(listener)
 

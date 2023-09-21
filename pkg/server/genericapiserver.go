@@ -39,6 +39,14 @@ type GenericAPIServer struct {
 	readyzLock            sync.Mutex
 	readyzChecks          []healthz.HealthzChecker
 	readyzChecksInstalled bool
+
+	// ShutdownDelayDuration allows to block shutdown for some time.
+	// during this time, the API server keeps serving, /healthz will return 200,
+	// but /readyz will return failure.
+	ShutdownDelayDuration time.Duration
+
+	// lifecycleSignals provides access to teh various signals that happen during the life cycle of the apiserver.
+	lifecycleSignals lifecycleSignals
 }
 
 func (s *GenericAPIServer) InstallAPIGroups(apiGroupInfos ...*APIGroupInfo) error {
@@ -67,25 +75,72 @@ func (s *GenericAPIServer) PrepareRun() preparedGenericAPIServer {
 }
 
 func (s preparedGenericAPIServer) Run(stopCh <-chan struct{}) error {
-	stopHttpServerCh := make(chan struct{})
+	delayedStopCh := s.lifecycleSignals.AfterShutdownDelayDuration
+	shutdownInitiatedCh := s.lifecycleSignals.ShutdownInitiated
+
+	// Clean up resources on shutdown.
+	defer s.Destory()
+
+	go func() {
+		defer delayedStopCh.Signal()
+
+		<-stopCh
+		// As soon as shutdown is initiated, /readyz should start returning faiure.
+		// This gives the load balancer a window defined by ShutdownDelayDuration to detect that /readyz is red
+		// and stop sending traffic to this server.
+		shutdownInitiatedCh.Signal()
+
+		time.Sleep(s.ShutdownDelayDuration)
+	}()
 
 	shutdownTimeout := s.ShutdownTimeout
+
+	notAcceptingNewRequestCh := s.lifecycleSignals.NotAcceptingNewRequest
+	stopHttpServerCh := make(chan struct{})
+	go func() {
+		defer close(stopHttpServerCh)
+
+		timeToStopHttpServerCh := notAcceptingNewRequestCh.Signaled()
+
+		<-timeToStopHttpServerCh
+	}()
 
 	stoppedCh, listenerStoppedCh, err := s.NonBlockingRun(stopHttpServerCh, shutdownTimeout)
 	if err != nil {
 		return err
 	}
 
+	preShutdownHooksHasStoppedCh := s.lifecycleSignals.PreShutdownHooksStopped
+	go func() {
+		defer notAcceptingNewRequestCh.Signal()
+
+		// wait for the delayed stopch before closing the handler chain
+		<-delayedStopCh.Signaled()
+
+		// Additionally wait for preshutdown hooks to also be finished, as some of them need
+		// to send API calls to clean up after themselves (e.g. lease reconcilers removing
+		// itself from the lease servers).
+		<-preShutdownHooksHasStoppedCh.Signaled()
+	}()
+
 	go func() {
 		<-listenerStoppedCh
 	}()
 
 	<-stopCh
+
+	// run shutdown hooks directly.
+	func() {
+		defer preShutdownHooksHasStoppedCh.Signal()
+	}()
+
+	// wait for stoppedCh that is closed when the graceful termination (server.Shutdown) is finished.
+	<-listenerStoppedCh
 	<-stoppedCh
 	return nil
 }
 
-func (s preparedGenericAPIServer) NonBlockingRun(stopCh <-chan struct{}, shutdownTimeout time.Duration) (<-chan struct{}, <-chan struct{}, error){
+func (s preparedGenericAPIServer) NonBlockingRun(stopCh <-chan struct{}, shutdownTimeout time.Duration) (<-chan struct{}, <-chan struct{}, error) {
 	// Use an internal stop channel to allow cleanup of the listeners on error.
 	internalStopCh := make(chan struct{})
 	var stoppedCh <-chan struct{}
@@ -99,6 +154,9 @@ func (s preparedGenericAPIServer) NonBlockingRun(stopCh <-chan struct{}, shutdow
 		}
 	}
 
+	// Now that listener have bound successfully, it is the
+	// reponsiblity of the caller to close the provided channel to
+	// ensure cleanup.
 	go func() {
 		<-stopCh
 		close(internalStopCh)
@@ -111,4 +169,9 @@ func NewDefaultAPIGroupInfo(group string) APIGroupInfo {
 	return APIGroupInfo{
 		Version: group,
 	}
+}
+
+// Destory cleans up all its resources on shutdown.
+// It starts with destroying its own resources.
+func (s *GenericAPIServer) Destory() {
 }
