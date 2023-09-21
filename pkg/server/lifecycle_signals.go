@@ -42,6 +42,10 @@ type lifecycleSignals struct {
 	// longer accepting any new request, from this point on any new
 	// request will receive an error.
 	NotAcceptingNewRequest lifecycleSignal
+
+	// HTTPServerStoppedListening event is signaled when the the
+	// HTTP server has stopped listening to the underlying socket.
+	HTTPServerStoppedListening lifecycleSignal
 }
 
 // ShuttingDown returns the lifecycle signal that is signaled when
@@ -60,6 +64,7 @@ func newLifecycleSignals() lifecycleSignals {
 		AfterShutdownDelayDuration: newNamedChannelWrapper("AfterShutdownDelayDuration"),
 		PreShutdownHooksStopped:    newNamedChannelWrapper("PreShutdownHooksStopped"),
 		NotAcceptingNewRequest:     newNamedChannelWrapper("NotAcceptingNewRequest"),
+		HTTPServerStoppedListening: newNamedChannelWrapper("HTTPServerStoppedListening"),
 	}
 }
 

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -69,6 +70,12 @@ func (s *GenericAPIServer) PrepareRun() preparedGenericAPIServer {
 	// s.installHealthz()
 	s.installLivez()
 
+	// as soon as shutdown is initiated, readiness should start failing
+	readinessStopch := s.lifecycleSignals.ShutdownInitiated.Signaled()
+	err := s.addReadyzShutdownCheck(readinessStopch)
+	if err != nil {
+		fmt.Printf("Failed to install readyz shutdown check %s", err)
+	}
 	s.installReadyz()
 
 	return preparedGenericAPIServer{s}
@@ -110,6 +117,12 @@ func (s preparedGenericAPIServer) Run(stopCh <-chan struct{}) error {
 		return err
 	}
 
+	httpServerStoppedListeningCh := s.lifecycleSignals.HTTPServerStoppedListening
+	go func() {
+		<-listenerStoppedCh
+		httpServerStoppedListeningCh.Signal()
+	}()
+
 	preShutdownHooksHasStoppedCh := s.lifecycleSignals.PreShutdownHooksStopped
 	go func() {
 		defer notAcceptingNewRequestCh.Signal()
@@ -121,10 +134,6 @@ func (s preparedGenericAPIServer) Run(stopCh <-chan struct{}) error {
 		// to send API calls to clean up after themselves (e.g. lease reconcilers removing
 		// itself from the lease servers).
 		<-preShutdownHooksHasStoppedCh.Signaled()
-	}()
-
-	go func() {
-		<-listenerStoppedCh
 	}()
 
 	<-stopCh
