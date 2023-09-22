@@ -18,14 +18,6 @@ func (s *GenericAPIServer) AddReadyzChecks(checks ...healthz.HealthzChecker) err
 	return nil
 }
 
-// installHealthz creates the halthz endpoint for this server.
-func (s *GenericAPIServer) installHealthz() {
-	s.healthzLock.Lock()
-	defer s.healthzLock.Unlock()
-	s.healthzChecksInstalled = true
-	healthz.InstallHandler(s.Handler.NonGoRestfulMux, s.healthzChecks...)
-}
-
 func (s *GenericAPIServer) installReadyz() {
 	s.readyzLock.Lock()
 	defer s.readyzLock.Unlock()
@@ -41,6 +33,7 @@ func (s *GenericAPIServer) addReadyzShutdownCheck(stopCh <-chan struct{}) error 
 func (s *GenericAPIServer) installLivez() {
 	s.livezLock.Lock()
 	defer s.livezLock.Unlock()
+	s.livezChecksInstalled = true
 	healthz.InstallLivezHandler(s.Handler.NonGoRestfulMux, s.livezChecks...)
 }
 

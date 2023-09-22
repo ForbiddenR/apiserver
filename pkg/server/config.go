@@ -10,8 +10,6 @@ import (
 type Config struct {
 	// Serving is required to serve http
 	Serving *ServingInfo
-	// The default set of healthz checks. There might be more added via AddHealthChecks dynamically.
-	HealthzChecks []healthz.HealthzChecker
 	// The default set of livez checks. There might be more added via AddHealthChecks dynamically.
 	LivezChecks []healthz.HealthzChecker
 	// The default set of readyz-only checks. There might be more added via AddReadyzChecks dynamically.
@@ -55,7 +53,6 @@ func NewConfig() *Config {
 	lifecycleSignals := newLifecycleSignals()
 
 	return &Config{
-		HealthzChecks:         append([]healthz.HealthzChecker{}, defaultHeathChecks...),
 		LivezChecks:           append([]healthz.HealthzChecker{}, defaultHeathChecks...),
 		ReadyzChecks:          append([]healthz.HealthzChecker{}, defaultHeathChecks...),
 		RequestTimeout:        time.Duration(5) * time.Second,
@@ -98,7 +95,6 @@ func (c completedConfig) New(name string) (*GenericAPIServer, error) {
 		ShutdownDelayDuration: c.ShutdownDelayDuration,
 		ServingInfo:           c.Serving,
 
-		healthzChecks:    c.HealthzChecks,
 		livezChecks:      c.LivezChecks,
 		readyzChecks:     c.ReadyzChecks,
 		lifecycleSignals: c.lifecycleSignals,

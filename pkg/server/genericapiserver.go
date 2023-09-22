@@ -28,10 +28,6 @@ type GenericAPIServer struct {
 	// Handler holds the handlers being used by this API server.
 	Handler *APIServerHandler
 
-	// healthz checks
-	healthzLock            sync.Mutex
-	healthzChecks          []healthz.HealthzChecker
-	healthzChecksInstalled bool
 	// livez checks
 	livezLock            sync.Mutex
 	livezChecks          []healthz.HealthzChecker
