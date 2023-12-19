@@ -6,7 +6,7 @@ import (
 	"os/signal"
 )
 
-var onlyOneSingnalHandler = make(chan struct{})
+var onlyOneSignalHandler = make(chan struct{})
 var shutdownHandler chan os.Signal
 
 // SetupSignalHandler registered for SIGTERM and SIGINT. A stop channel is returned
@@ -22,7 +22,7 @@ func SetupSignalHandler() <-chan struct{} {
 // Only one of SetupSignalContext and SetupSignalHandler should be called, and only can
 // be called once.
 func SetupSignalContext() context.Context {
-	close(onlyOneSingnalHandler) // panics when called twice
+	close(onlyOneSignalHandler) // panics when called twice
 
 	shutdownHandler = make(chan os.Signal, 2)
 
