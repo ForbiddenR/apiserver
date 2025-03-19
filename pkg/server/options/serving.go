@@ -74,7 +74,7 @@ func CreateListener(network, addr string, config net.ListenConfig) (net.Listener
 
 	ln, err := config.Listen(context.TODO(), network, addr)
 	if err != nil {
-		return nil, 0,fmt.Errorf("failed to listen on %v: %v", addr, err)
+		return nil, 0, fmt.Errorf("failed to listen on %v: %v", addr, err)
 	}
 
 	// get port
